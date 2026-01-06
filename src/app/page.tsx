@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, BrainCircuit, FileText, Loader2, Send, User, Upload, Paperclip, PlusSquare, Trash2 } from "lucide-react";
-import { handleSummarize, postToChat } from "./actions";
+import { handleSummarize, postToChat, handleFileUpload as handleFileUploadAction } from "./actions";
 import ChatMessage from "@/components/chat-message";
 import ReportDialog from "@/components/report-dialog";
 import PhageLogo from "@/components/phage-logo";
@@ -44,6 +44,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isFileUploading, setIsFileUploading] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
@@ -78,29 +79,65 @@ export default function Home() {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
-
-  const handleFileUpload = (setter: (content: string) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleFileUpload = (setter: (content: string) => void, isChatMessage = false) => async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        setter(content);
-        toast({
-          title: "File Loaded",
-          description: `${file.name} has been loaded successfully.`,
-        });
-      };
-      reader.onerror = () => {
-        toast({
-          variant: "destructive",
-          title: "File Read Error",
-          description: `Could not read the file ${file.name}.`,
-        });
-      };
-      reader.readAsText(file);
+        const isTextFile = file.type.startsWith('text/') || file.type.endsWith('json') || file.type.endsWith('csv');
+        
+        setIsFileUploading(true);
+        toast({ title: "Uploading file...", description: `Processing ${file.name}.` });
+
+        try {
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const fileDataUri = e.target?.result as string;
+                
+                if (isTextFile) {
+                    const content = fileDataUri.split(',')[1] ? atob(fileDataUri.split(',')[1]) : '';
+                    setter(content);
+                } else { // Handle PDF and Images
+                    const result = await handleFileUploadAction(fileDataUri);
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    if (isChatMessage) {
+                         // Acknowledge the file upload in the chat input
+                        setter(`File uploaded: ${file.name}. The content has been processed. Now you can ask questions about it.`);
+                    } else {
+                        setter(result.text || `Content from ${file.name}`);
+                    }
+                }
+                
+                toast({
+                    title: "File Loaded",
+                    description: `${file.name} has been processed successfully.`,
+                });
+            };
+
+            reader.onerror = () => {
+                throw new Error(`Could not read the file ${file.name}.`);
+            };
+
+            reader.readAsDataURL(file);
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during file upload.";
+            toast({
+                variant: "destructive",
+                title: "File Upload Failed",
+                description: errorMessage,
+            });
+        } finally {
+            setIsFileUploading(false);
+            // Reset file input
+            if (event.target) {
+                event.target.value = "";
+            }
+        }
     }
   };
+
   
   const updateCurrentSession = (updatedMessages: Message[], summary?: string) => {
     if (!activeSessionId) return;
@@ -279,8 +316,8 @@ export default function Home() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <Label htmlFor="research-notes" className="font-medium">Research Notes</Label>
-                     <Button variant="outline" size="sm" onClick={() => researchNotesInputRef.current?.click()}>
-                        <Upload className="mr-2 h-4 w-4" />
+                     <Button variant="outline" size="sm" onClick={() => researchNotesInputRef.current?.click()} disabled={isFileUploading}>
+                        {isFileUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                         Upload File
                     </Button>
                      <input
@@ -288,7 +325,7 @@ export default function Home() {
                         ref={researchNotesInputRef}
                         className="hidden"
                         onChange={handleFileUpload(setResearchNotes)}
-                        accept=".txt,.md,.json,.csv"
+                        accept=".txt,.md,.json,.csv,.pdf,.png,.jpg,.jpeg"
                     />
                   </div>
                   <Textarea
@@ -358,11 +395,11 @@ export default function Home() {
         
         <div className="px-6 py-4 border-t bg-background">
           <form onSubmit={handleSendMessage} className="flex items-start gap-4">
-             <Button type="button" variant="ghost" size="icon" className="flex-shrink-0" onClick={() => chatFileInputRef.current?.click()}>
-                <Paperclip />
+             <Button type="button" variant="ghost" size="icon" className="flex-shrink-0" onClick={() => chatFileInputRef.current?.click()} disabled={isFileUploading}>
+                {isFileUploading ? <Loader2 className="animate-spin" /> : <Paperclip />}
                 <span className="sr-only">Attach file</span>
             </Button>
-            <input type="file" ref={chatFileInputRef} className="hidden" onChange={handleFileUpload(setChatInput)} accept=".txt,.md,.json,.csv" />
+            <input type="file" ref={chatFileInputRef} className="hidden" onChange={handleFileUpload(setChatInput, true)} accept=".txt,.md,.json,.csv,.pdf,.png,.jpg,.jpeg" />
             <Textarea
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
