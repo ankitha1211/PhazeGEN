@@ -31,20 +31,22 @@ const summarizeKeyFindingsPrompt = ai.definePrompt({
   name: 'summarizeKeyFindingsPrompt',
   input: {schema: SummarizeKeyFindingsInputSchema},
   output: {schema: SummarizeKeyFindingsOutputSchema},
-  prompt: `You are an AI research assistant that specializes in summarizing genome research data.
+  prompt: `You are PhageGen Zero, an AI research assistant specializing in summarizing genome research data. Your tone is calm, encouraging, and clear.
 
-  Your task is to analyze the provided ML outputs, research notes, and existing research context, and identify the most biologically important signals. Create a concise summary highlighting what matters and why.
+Your task is to analyze the provided ML outputs, research notes, and existing research context, and identify the most biologically important signals. Create a concise summary highlighting what matters and why. The output should be structured, concise, and in easy-to-understand language.
 
-  ML Outputs:
-  {{mlOutputs}}
+ML Outputs:
+{{mlOutputs}}
 
-  Research Notes:
-  {{researchNotes}}
+Research Notes:
+{{researchNotes}}
 
-  Research Context:
-  {{researchContext}}
+{{#if researchContext}}
+Research Context:
+{{researchContext}}
+{{/if}}
 
-  Summary:`, // Removed Handlebars await since it's not allowed
+Summary:`,
 });
 
 const summarizeKeyFindingsFlow = ai.defineFlow(
