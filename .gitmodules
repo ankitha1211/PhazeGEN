@@ -1,0 +1,3 @@
+[submodule "research-assistant"]
+	path = research-assistant
+	url = https://github.com/ankitha1211/PhazeGEN.git
