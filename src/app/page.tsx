@@ -36,7 +36,7 @@ export default function Home() {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I am PhageGen Zero, your AI research assistant. Provide me with structured ML outputs and your research notes, and I'll help you interpret the results. How can I assist you today?",
+      content: "Hello! I am PhazeGEN, your AI research assistant. Provide me with structured ML outputs and your research notes, and I'll help you interpret the results. How can I assist you today?",
     },
   ]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
@@ -117,7 +117,7 @@ export default function Home() {
       <aside className="w-1/3 min-w-[450px] max-w-[600px] flex flex-col border-r p-4 gap-4">
         <header className="flex items-center gap-2 pb-2 border-b">
           <PhageLogo className="w-8 h-8 text-primary" />
-          <h1 className="text-xl font-bold font-headline">PhageGen Zero</h1>
+          <h1 className="text-xl font-bold font-headline">PhazeGEN</h1>
         </header>
 
         <div className="flex-grow flex flex-col gap-4 overflow-y-auto pr-2">

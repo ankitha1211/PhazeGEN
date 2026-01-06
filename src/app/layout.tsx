@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Phage AI Research Assistant',
+  title: 'PhazeGEN AI Research Assistant',
   description: 'An AI-powered research assistant for genome research.',
 };
 

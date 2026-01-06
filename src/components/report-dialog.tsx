@@ -33,7 +33,7 @@ const ReportDialog = ({
     const printWindow = window.open('', '', 'height=800,width=800');
     if (printWindow) {
       const reportContent = document.getElementById('report-content')?.innerHTML;
-      printWindow.document.write('<html><head><title>PhageGen Zero Report</title>');
+      printWindow.document.write('<html><head><title>PhazeGEN Report</title>');
       printWindow.document.write('<style>body { font-family: sans-serif; } h1,h2,h3 { font-family: "Space Grotesk", sans-serif; } pre { white-space: pre-wrap; background-color: #f5f5f5; padding: 1rem; border-radius: 0.5rem; font-family: "Source Code Pro", monospace; } blockquote { border-left: 2px solid #ccc; padding-left: 1rem; margin-left: 0; } </style>');
       printWindow.document.write('</head><body>');
       printWindow.document.write(reportContent || '');
