@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, BrainCircuit, FileText, Loader2, Send, User } from "lucide-react";
+import { Bot, BrainCircuit, FileText, Loader2, Send, User, Upload, Paperclip } from "lucide-react";
 import { handleSummarize, postToChat } from "./actions";
 import ChatMessage from "@/components/chat-message";
 import ReportDialog from "@/components/report-dialog";
@@ -45,10 +45,35 @@ export default function Home() {
   const [chatInput, setChatInput] = useState("");
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const researchNotesInputRef = useRef<HTMLInputElement>(null);
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight);
   }, [messages]);
+
+  const handleFileUpload = (setter: (content: string) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setter(content);
+        toast({
+          title: "File Loaded",
+          description: `${file.name} has been loaded successfully.`,
+        });
+      };
+      reader.onerror = () => {
+        toast({
+          variant: "destructive",
+          title: "File Read Error",
+          description: `Could not read the file ${file.name}.`,
+        });
+      };
+      reader.readAsText(file);
+    }
+  };
 
   const onSummarize = async () => {
     setIsSummaryLoading(true);
@@ -142,10 +167,23 @@ export default function Home() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="research-notes" className="font-medium">Research Notes</Label>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="research-notes" className="font-medium">Research Notes</Label>
+                     <Button variant="outline" size="sm" onClick={() => researchNotesInputRef.current?.click()}>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload File
+                    </Button>
+                     <input
+                        type="file"
+                        ref={researchNotesInputRef}
+                        className="hidden"
+                        onChange={handleFileUpload(setResearchNotes)}
+                        accept=".txt,.md,.json,.csv"
+                    />
+                  </div>
                   <Textarea
                     id="research-notes"
-                    placeholder="Paste your research notes here..."
+                    placeholder="Paste your research notes here or upload a file..."
                     value={researchNotes}
                     onChange={(e) => setResearchNotes(e.target.value)}
                     className="h-28"
@@ -187,11 +225,16 @@ export default function Home() {
         </div>
         
         <div className="px-6 py-4 border-t bg-background">
-          <form onSubmit={handleSendMessage} className="flex items-center gap-4">
+          <form onSubmit={handleSendMessage} className="flex items-start gap-4">
+             <Button type="button" variant="ghost" size="icon" className="flex-shrink-0" onClick={() => chatFileInputRef.current?.click()}>
+                <Paperclip />
+                <span className="sr-only">Attach file</span>
+            </Button>
+            <input type="file" ref={chatFileInputRef} className="hidden" onChange={handleFileUpload(setChatInput)} accept=".txt,.md,.json,.csv" />
             <Textarea
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Ask a question about the analysis..."
+              placeholder="Ask a question about the analysis, or upload a file..."
               className="flex-1 resize-none"
               rows={1}
               onKeyDown={(e) => {
