@@ -54,22 +54,29 @@ export default function Home() {
   const chatFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const savedHistory = localStorage.getItem('phazegen_chat_history');
-    if (savedHistory) {
-      setChatHistory(JSON.parse(savedHistory));
+    try {
+      const savedHistory = localStorage.getItem('phazegen_chat_history');
+      if (savedHistory) {
+        setChatHistory(JSON.parse(savedHistory));
+      }
+    } catch (e) {
+      console.error("Failed to parse chat history from localStorage", e);
+      localStorage.removeItem('phazegen_chat_history');
     }
     const newSessionId = `session_${Date.now()}`;
     setActiveSessionId(newSessionId);
   }, []);
 
   useEffect(() => {
-    if(chatHistory.length > 0) {
+    if (chatHistory.length > 0) {
       localStorage.setItem('phazegen_chat_history', JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
 
   useEffect(() => {
-    chatContainerRef.current?.scrollTo(0, chatContainerRef.current.scrollHeight);
+    if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleFileUpload = (setter: (content: string) => void) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +101,33 @@ export default function Home() {
       reader.readAsText(file);
     }
   };
+  
+  const updateCurrentSession = (updatedMessages: Message[], summary?: string) => {
+    if (!activeSessionId) return;
+
+    const sessionTitle = updatedMessages.find(m => m.role === 'user')?.content.substring(0, 30) || 'New Session';
+    const currentKeyFindings = summary !== undefined ? summary : keyFindings;
+
+    const newSession: ChatSession = {
+        id: activeSessionId,
+        title: sessionTitle,
+        mlOutput,
+        researchNotes,
+        keyFindings: currentKeyFindings,
+        messages: updatedMessages,
+    };
+
+    const existingSessionIndex = chatHistory.findIndex(s => s.id === activeSessionId);
+    let updatedHistory;
+    if (existingSessionIndex > -1) {
+        updatedHistory = [...chatHistory];
+        updatedHistory[existingSessionIndex] = newSession;
+    } else {
+        updatedHistory = [newSession, ...chatHistory];
+    }
+    setChatHistory(updatedHistory);
+  };
+
 
   const onSummarize = async () => {
     setIsSummaryLoading(true);
@@ -104,12 +138,7 @@ export default function Home() {
       }
       const summary = result.summary || "No summary could be generated.";
       setKeyFindings(summary);
-      
-       if (activeSessionId) {
-        const sessionTitle = messages.find(m => m.role === 'user')?.content.substring(0, 30) || 'New Session';
-        const updatedHistory = chatHistory.filter(s => s.id !== activeSessionId);
-        setChatHistory([{ id: activeSessionId, title: sessionTitle, mlOutput, researchNotes, keyFindings: summary, messages }, ...updatedHistory]);
-      }
+      updateCurrentSession(messages, summary);
       
       toast({
         title: "Analysis Complete",
@@ -139,6 +168,7 @@ export default function Home() {
     
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
+    updateCurrentSession(newMessages);
     setChatInput("");
     setIsChatLoading(true);
 
@@ -154,20 +184,7 @@ export default function Home() {
       
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
-
-      if (activeSessionId) {
-        const sessionTitle = finalMessages.find(m => m.role === 'user')?.content.substring(0, 30) || 'New Session';
-        const existingSessionIndex = chatHistory.findIndex(s => s.id === activeSessionId);
-        let updatedHistory;
-        if (existingSessionIndex > -1) {
-            updatedHistory = [...chatHistory];
-            updatedHistory[existingSessionIndex] = { ...updatedHistory[existingSessionIndex], title: sessionTitle, messages: finalMessages };
-        } else {
-            updatedHistory = [{ id: activeSessionId, title: sessionTitle, mlOutput, researchNotes, keyFindings, messages: finalMessages }, ...chatHistory];
-        }
-        setChatHistory(updatedHistory);
-      }
-
+      updateCurrentSession(finalMessages);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
@@ -176,7 +193,9 @@ export default function Home() {
         role: "assistant",
         content: `Sorry, an error occurred: ${errorMessage}`,
       };
-      setMessages((prev) => [...prev, errorResponseMessage]);
+      const finalMessages = [...messages, userMessage, errorResponseMessage];
+      setMessages(finalMessages);
+      updateCurrentSession(finalMessages);
     } finally {
       setIsChatLoading(false);
     }
