@@ -64,7 +64,7 @@ const ReportDialog = ({
 
             <h2 className="font-headline mt-6">Conversation Transcript</h2>
             {chatHistory
-              .filter(msg => msg.role !== 'system') // Filter out system messages if any
+              .filter(msg => msg.id !== '1' && msg.role !== 'system') // Filter out initial message and system messages
               .map((message) => (
                 <div key={message.id} className="mt-4">
                   <h3 className="font-semibold flex items-center gap-2 font-headline">
